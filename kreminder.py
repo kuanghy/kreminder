@@ -55,8 +55,8 @@ specific configuration Item
     conf_item: all, rest, todo
     """
 
-    user_conf_file = path.expandvars('$HOME') + "/.kigh.conf"
-    global_conf_file = path.expandvars('$HOME') + "/kigh.conf"
+    user_conf_file = path.expandvars('$HOME') + "/.config/kreminder.py"
+    global_conf_file =  "/etc/kreminder.conf"
     if path.exists(user_conf_file) and path.isfile(user_conf_file):
         fp = open(user_conf_file, "r")
     elif path.exists(global_conf_file) and path.isfile(global_conf_file):
@@ -85,7 +85,7 @@ def remind_rest(interval = 30):
 
     title_notify = "休息提醒"
     msg_notify = config["message"] % (config["interval"] / 60.0)
-    icon_notify = getcwd() + "/alarm_clock_time_32px_.png"
+    icon_notify = getcwd() + "/icon/clock_32x32.png"
     pynotify.init("Rest-reminder")
     rnotify = pynotify.Notification(title_notify, msg_notify, icon_notify)
     rnotify.set_timeout(15000)
@@ -103,61 +103,56 @@ def remind_todo():
         print "未读取到相关配置！"
         return
 
-    todo_everyday = {}
-    todo_exact = {}
-    for key, val in config.items():
-        if match("Everyday [\d]{2}:[0-6]{2}:[0-6]{2}", key.strip()):
-            conf_time = key.split()[1]
-            todo_everyday[conf_time] = val
-        elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[0-6]{2}:[0-6]{2}", key.strip()):
-            todo_exact[key] = val
-            #print "Other: ", val
+    event_list = []
+    title_notify = "待办事项"
+    icon_notify = getcwd() + "/icon/clock_32x32.png"
+    for time, message in config.items():
+        if match("Everyday [\d]{2}:[0-6]{2}:[0-6]{2}", time.strip()):
+            pynotify.init("Todo-reminder-" + time.split()[1])
+            rnotify = pynotify.Notification(title_notify, message, icon_notify)
+            rnotify.set_timeout(15000)
+            rnotify.set_urgency("normal")
+            remind_item = {"conf_time": time.split()[1], "notify_obj": rnotify, "freq": "everyday"}
+            event_list.append(remind_item)
+        elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[0-6]{2}:[0-6]{2}", time.strip()):
+            pynotify.init("Todo-reminder-" + key.split()[1])
+            rnotify = pynotify.Notification(title_notify, message, icon_notify)
+            rnotify.set_timeout(15000)
+            rnotify.set_urgency("normal")
+            remind_item = {"conf_time": time, "notify_obj": rnotify, "freq": "exact"}
+            event_list.append(remind_item)
         else:
             print "配置内容格式不正确！"
 
-    title_notify = "待办事项"
-    icon_notify = getcwd() + "/alarm_clock_time_32px_.png"
     while True:
-        if todo_everyday:
-            for conf_time, message in todo_everyday.items():
+        for remind_item in event_list:
+            if not cmp(remind_item["freq"], "everyday"):
                 curr_time = strftime("%H:%M:%S", localtime())
-                if not cmp(conf_time, curr_time):
-                    pynotify.init("Todo-reminder")
-                    rnotify = pynotify.Notification(title_notify, message, icon_notify)
-                    rnotify.set_timeout(15000)
-                    rnotify.set_urgency("normal")
-                    rnotify.show()
-
-        if todo_exact:
-            for conf_time, message in todo_exact.items():
+                if not cmp(remind_item["conf_time"], curr_time):
+                    remind_item["notify_obj"].show()
+            elif not cmp(remind_item["freq"], "exact"):
                 curr_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
-                if not cmp(conf_time, curr_time):
-                    pynotify.init("Todo-reminder")
-                    rnotify = pynotify.Notification(title_notify, message, icon_notify)
-                    rnotify.set_timeout(15000)
-                    rnotify.set_urgency("normal")
-                    rnotify.show()
+                if not cmp(remind_item["conf_time"], curr_time):
+                    remind_item["notify_obj"].show()
 
-    curr_time = strftime("%H:%M:%S", localtime())
-    # msg_notify = config["message"] % (config["interval"] / 60.0)
-    # icon_notify = getcwd() + "/alarm_clock_time_32px_.png"
-    # pynotify.init ("Rest-reminder")
-    # rnotify = pynotify.Notification (title_notify, msg_notify, icon_notify)
-    # rnotify.set_timeout(15000)
-    # rnotify.set_urgency("normal")
-    # while True:
-    #     try:
-    #         sleep(interval)
-    #         rnotify.show()
-    #     except Exception, e:
-    #         print e
+def startup_notice():
+    help_file = getcwd() + "/man/readme.html"
+    icon_notify = getcwd() + "/icon/hint_32x32.png"
+    title_notify = "启动通知"
+    msg_notify = 'Kreminder 已经启动，点击<a href="' + help_file + '">这里</a>可以查看帮助！'
+    pynotify.init("Startup-notice")
+    rnotify = pynotify.Notification(title_notify, msg_notify, icon_notify)
+    rnotify.set_timeout(15000)
+    rnotify.set_urgency("normal")
+    rnotify.show()
 
 # Script starts from here
 
 if __name__ == "__main__":
+    startup_notice()
     # print('thread %s is running...' % current_thread().name)
     # thread_remind_rest =  Thread(target=remind_rest, name='RemindRestThread')
     # thread_remind_rest.start()
     # thread_remind_rest.join()
     # print('thread %s ended.' % current_thread().name)
-    remind_todo()
+    remind_rest()
