@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # *************************************************************
-#     Filename @  kigh.py
+#     Filename @  kreminder.py
 #       Author @  Huoty
 #  Create date @  2015-12-25 16:59:16
 #  Description @
@@ -50,8 +50,7 @@ def parse_conf_file(file_object):
 
 def get_conf(conf_item = "all"):
     """
-    Return configuration information by
-specific configuration Item
+    Return configuration information by specific configuration Item
     conf_item: all, rest, todo
     """
 
@@ -107,33 +106,34 @@ def remind_todo():
     title_notify = "待办事项"
     icon_notify = getcwd() + "/icon/clock_32x32.png"
     for time, message in config.items():
-        if match("Everyday [\d]{2}:[0-6]{2}:[0-6]{2}", time.strip()):
+        if match("Everyday [\d]{2}:[\d]{2}:[\d]{2}", time.strip()):
             pynotify.init("Todo-reminder-" + time.split()[1])
             rnotify = pynotify.Notification(title_notify, message, icon_notify)
             rnotify.set_timeout(15000)
             rnotify.set_urgency("normal")
-            remind_item = {"conf_time": time.split()[1], "notify_obj": rnotify, "freq": "everyday"}
+            remind_item = {"conf_time": time.split()[1], "notify_obj": rnotify}
             event_list.append(remind_item)
-        elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[0-6]{2}:[0-6]{2}", time.strip()):
-            pynotify.init("Todo-reminder-" + key.split()[1])
+        elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:[\d]{2}", time.strip()):
+            pynotify.init("Todo-reminder-" + time.split()[1])
             rnotify = pynotify.Notification(title_notify, message, icon_notify)
             rnotify.set_timeout(15000)
             rnotify.set_urgency("normal")
-            remind_item = {"conf_time": time, "notify_obj": rnotify, "freq": "exact"}
+            remind_item = {"conf_time": time.strip(), "notify_obj": rnotify}
             event_list.append(remind_item)
         else:
-            print "配置内容格式不正确！"
+            print "配置内容格式不正确！", time, message
 
-    while True:
-        for remind_item in event_list:
-            if not cmp(remind_item["freq"], "everyday"):
+    if event_list:
+        while True:
+            for remind_item in event_list:
                 curr_time = strftime("%H:%M:%S", localtime())
-                if not cmp(remind_item["conf_time"], curr_time):
+                curr_date = strftime("%Y-%m-%d %H:%M:%S", localtime())
+                if remind_item["conf_time"] == curr_time or remind_item["conf_time"] == curr_date:
                     remind_item["notify_obj"].show()
-            elif not cmp(remind_item["freq"], "exact"):
-                curr_time = strftime("%Y-%m-%d %H:%M:%S", localtime())
-                if not cmp(remind_item["conf_time"], curr_time):
-                    remind_item["notify_obj"].show()
+
+                del curr_time
+                del curr_date
+                del remind_item
 
 def startup_notice():
     help_file = getcwd() + "/man/readme.html"
@@ -155,4 +155,5 @@ if __name__ == "__main__":
     # thread_remind_rest.start()
     # thread_remind_rest.join()
     # print('thread %s ended.' % current_thread().name)
-    remind_rest()
+    #remind_rest()
+    remind_todo()
