@@ -8,8 +8,8 @@
 #  Description @
 # *************************************************************
 
-from os import getcwd, path
-from time import sleep, strftime, localtime
+from os import getcwd, path, makedirs
+from time import sleep, time, strftime, localtime
 from re import match
 from apscheduler.schedulers.background import BackgroundScheduler
 from random import sample
@@ -18,6 +18,31 @@ import pynotify
 def get_random_str(length):
     chars = "qwertyuiopasdfghjklzxcvbnm1234567890"
     return "".join(sample(chars, length))
+
+def log(msg, type = "info"):
+    """
+    Write information to log file.
+    type: info, warn, error
+    """
+
+    log_dir = path.expandvars('$HOME') + "/.log/kreminder"
+    log_file  = log_dir + "/kreminder.log"
+    if not path.exists(log_dir):
+        makedirs(log_dir)
+
+    curr_time = "[ " + strftime("%Y-%m-%d %H:%M:%S", localtime()) + " " + str(time()) + " ]"
+    if type == "info":
+        content = curr_time + " INFO: " + msg
+    elif type == "warn":
+        content = curr_time + " WARNNING: " + msg
+    elif type == "error":
+        content = curr_time + " ERROR: " + msg
+    else:
+        content = curr_time + "没有定义的日志类型！"
+
+    file_object = open(log_file, "a")
+    file_object.write(content)
+    file_object.close()
 
 def parse_conf_file(file_object):
     status = 0  # 状态机： 0 - 初始状态， 1 - 读取休息提醒配置， 2 - 读取代办事项配置
@@ -89,45 +114,6 @@ def show_notify(title, msg, icon):
     knotify.set_urgency("normal")
     knotify.show()
 
-def remind_todo():
-    config = get_conf("todo")
-    if not config:
-        print "未读取到相关配置！"
-        return
-
-    event_list = []
-    title_notify = "待办事项"
-    icon_notify = getcwd() + "/icon/clock_32x32.png"
-    for time, message in config.items():
-        if match("Everyday [\d]{2}:[\d]{2}:[\d]{2}", time.strip()):
-            pynotify.init("Todo-reminder-" + time.split()[1])
-            rnotify = pynotify.Notification(title_notify, message, icon_notify)
-            rnotify.set_timeout(15000)
-            rnotify.set_urgency("normal")
-            remind_item = {"conf_time": time.split()[1], "notify_obj": rnotify}
-            event_list.append(remind_item)
-        elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:[\d]{2}", time.strip()):
-            pynotify.init("Todo-reminder-" + time.split()[1])
-            rnotify = pynotify.Notification(title_notify, message, icon_notify)
-            rnotify.set_timeout(15000)
-            rnotify.set_urgency("normal")
-            remind_item = {"conf_time": time.strip(), "notify_obj": rnotify}
-            event_list.append(remind_item)
-        else:
-            print "配置内容格式不正确！", time, message
-
-    if event_list:
-        while True:
-            for remind_item in event_list:
-                curr_time = strftime("%H:%M:%S", localtime())
-                curr_date = strftime("%Y-%m-%d %H:%M:%S", localtime())
-                if remind_item["conf_time"] == curr_time or remind_item["conf_time"] == curr_date:
-                    remind_item["notify_obj"].show()
-
-                del curr_time
-                del curr_date
-                del remind_item
-
 def startup_notice():
     help_file = getcwd() + "/man/readme.html"
     icon_notify = getcwd() + "/icon/hint_32x32.png"
@@ -142,42 +128,63 @@ def startup_notice():
 # Script starts from here
 
 if __name__ == "__main__":
+    # show startup notify
     startup_notice()
+    log("hello world")
+    import sys
+    sys.exit()
 
     # scheduler of Reminding rest
     rest_config = get_conf("rest")
+
     if rest_config:
-        rest_interval = rest_config["interval"] * 60 * 60
-        rest_notify_icon = getcwd() + "/icon/clock_32x32.png"
-        rest_remind_scheduler = BackgroundScheduler()
-        rest_remind_scheduler.add_job(show_notify, 'interval', seconds = rest_interval, args = ["休息提醒", rest_config["message"], rest_notify_icon])
-        rest_remind_scheduler.start()
+        try:
+            rest_interval = rest_config["interval"] * 60 * 60
+            rest_notify_icon = getcwd() + "/icon/clock_32x32.png"
+            rest_remind_scheduler = BackgroundScheduler()
+            rest_remind_scheduler.add_job(show_notify, 'interval', seconds = rest_interval, args = ["休息提醒", rest_config["message"], rest_notify_icon])
+            rest_remind_scheduler.start()
+        except Exception, e:
+            print e
     else:
         print "未读取到相关配置！"
+
 
     # scheduler of Reminding rest
     todo_config = get_conf("todo")
+
     if todo_config:
         todo_notify_icon = getcwd() + "/icon/clock_32x32.png"
-        for todo_date, todo_msg in config.items():
-            if match("Everyday [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
-
-                rest_remind_scheduler = BackgroundScheduler()
-                rest_remind_scheduler.add_job(show_notify, 'interval', seconds = rest_interval, args = ["待办事项", todo_msg, todo_notify_icon])
-                rest_remind_scheduler.start()
-            elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
-                rest_remind_scheduler = BackgroundScheduler()
-                rest_remind_scheduler.add_job(show_notify, todo_date, ["待办事项", todo_msg, todo_notify_icon])
-                rest_remind_scheduler.start()
-            else:
-                print "配置内容格式不正确！", time, message
+        try:
+            todo_remind_scheduler = BackgroundScheduler()
+            for todo_date, todo_msg in todo_config.items():
+                if match("Everyday [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
+                    todo_time = (todo_date.split()[1]).split(":")
+                    todo_remind_scheduler.add_job(show_notify, 'cron', \
+                                                                day = "*", \
+                                                                hour = todo_time[0], \
+                                                                minute = todo_time[1], \
+                                                                second = todo_time[2],  \
+                                                                args = ["待办事项", todo_msg, todo_notify_icon], \
+                                                                id = todo_date)
+                elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
+                    todo_remind_scheduler.add_job(show_notify, "date", \
+                                                                run_date = todo_date, \
+                                                                args = ["待办事项", todo_msg, todo_notify_icon], \
+                                                                id = todo_date)
+                else:
+                    print "配置内容格式不正确！"
+            todo_remind_scheduler.start()
+        except Exception, e:
+            print e
     else:
         print "未读取到相关配置！"
 
-
-
+    # main process
     try:
         while True:
             sleep(2)
     except Exception, e:
         print e
+        rest_remind_scheduler.shutdown()
+        todo_remind_scheduler.shutdown()
