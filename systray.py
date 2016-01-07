@@ -1,25 +1,33 @@
+#! /usr/bin/env python
 # -*- coding:utf8 -*-
-import sys
+
+# *************************************************************
+#     Filename @  systray.py
+#       Author @  Huoty
+#  Create date @  2016-01-07 21:16:16
+#  Description @ pyqt4 system tray icon
+# *************************************************************
 
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+import sys
 
-class TrayIcon(QSystemTrayIcon):
+class SysTray(QSystemTrayIcon):
     def __init__(self, parent=None):
-        super(TrayIcon, self).__init__(parent)
+        super(SysTray, self).__init__(parent)
         self.initObjects()
         self.setObjects()
 
         self.activated.connect(self.iconClicked)
     def initObjects(self):
         self.menu = QMenu()
-        self.showAction = QAction(u'显示', self, triggered=self.showWidget)
+        self.helpAction = QAction(u'帮助', self, triggered=self.showHelp)
         self.quitAction = QAction(u"退出", self, triggered=self.exitApp)
         self.icon = QIcon('./icon/clock_32x32.png')
 
     def setObjects(self):
-        self.menu.addAction(self.showAction)
+        self.menu.addAction(self.helpAction)
         self.menu.addAction(self.quitAction)
         self.setIcon(self.icon)
         self.setContextMenu(self.menu)
@@ -34,18 +42,16 @@ class TrayIcon(QSystemTrayIcon):
                 pw.show()
     def exitApp(self):
         self.setVisible(False)
-        self.parent().exit()
         qApp.quit()
         sys.exit()
 
-    def showWidget(self):
-        self.emit(SIGNAL("showMain"))
+    def showHelp(self):
+        self.emit(SIGNAL("showHelp"))
 
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    ti = TrayIcon()
+    ti = SysTray()
     ti.show()
-    icon = QIcon("icon2.png")
-    ti.showMessage(u"提示",u"程序启动",icon)
+    ti.showMessage(u"提示", u"程序启动", 2)
     sys.exit(app.exec_())

@@ -12,24 +12,12 @@ from os import getcwd, path, makedirs
 from time import sleep, strftime, localtime
 from re import match
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.jobstores.memory import MemoryJobStore
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from random import sample
 from PyQt4.QtGui import QApplication
-from trayIcon import TrayIcon
-import pynotify
+from systray import SysTray
 import sys
 import logging
 logging.basicConfig()
-
-def get_random_str(length):
-    """
-    Generating random number
-    """
-
-    chars = "qwertyuiopasdfghjklzxcvbnm1234567890"
-    return "".join(sample(chars, length))
 
 def log(msg, type = "info"):
     """
@@ -37,7 +25,7 @@ def log(msg, type = "info"):
     type: info, warn, error
     """
 
-    log_dir = path.expandvars('$HOME') + "/.log/kreminder"
+    log_dir = path.expandvars('$HOME') + "/.kreminder/log"
     log_file  = log_dir + "/kreminder.log"
     if not path.exists(log_dir):
         makedirs(log_dir)
@@ -80,11 +68,11 @@ def parse_conf_file(file_object):
                     if not cmp(key, "interval"):
                         remind_rest_dict["interval"] = int(val)
                     elif not cmp(key, "message"):
-                        remind_rest_dict["message"] = val
+                        remind_rest_dict["message"] = unicode(val, "utf-8")
                     else:
                         log(key + " 是未定义的配置项.", "error")
                 elif status == 2:
-                    todo_list_dict[key] = val
+                    todo_list_dict[key] = unicode(val, "utf-8")
                 else:
                     log("在解析配置文件时出现未定义的状态： " + status, "error")
 
@@ -96,7 +84,7 @@ def get_conf(conf_item = "all"):
     conf_item: all, rest, todo
     """
 
-    user_conf_file = path.expandvars('$HOME') + "/.config/kreminder.conf"
+    user_conf_file = path.expandvars('$HOME') + "/.kreminder/config/kreminder.conf"
     global_conf_file =  "/etc/kreminder.conf"
     if path.exists(user_conf_file) and path.isfile(user_conf_file):
         fp = open(user_conf_file, "r")
@@ -117,104 +105,54 @@ def get_conf(conf_item = "all"):
         log("该配置项（%s）还未定义." % conf_item, "warn")
         return None
 
-
-def show_notify(title, msg, icon):
-    #name = get_random_str(8)
-    pynotify.init("Kreminder")
-    knotify = pynotify.Notification(title, msg, icon)
-    knotify.set_timeout(15000)
-    knotify.set_urgency("normal")
-    knotify.show()
-    del knotify
-
-def startup_notice():
-    help_file = getcwd() + "/man/readme.html"
-    icon_notify = getcwd() + "/icon/hint_32x32.png"
-    title_notify = "启动通知"
-    msg_notify = 'Kreminder 已经启动，点击<a href="' + help_file + '">这里</a>可以查看帮助！'
-    pynotify.init("Startup-notice")
-    knotify = pynotify.Notification(title_notify, msg_notify, icon_notify)
-    knotify.set_timeout(8000)
-    knotify.set_urgency("normal")
-    knotify.show()
-    del knotify
-
 # Script starts from here
 
 if __name__ == "__main__":
-    # show startup notify
-    #startup_notice()
-    # log("hello world")
-    # import sys
-    # sys.exit()
     app = QApplication(sys.argv)
-    ti = TrayIcon()
-    ti.show()
-    ti.showMessage(u"启动通知",u"Kreminder 已经启动",)
-
-
-
-    jobstores = {
-        'default': MemoryJobStore()
-        #'sqlite': SQLAlchemyJobStore(url='sqlite:///jobs.sqlite')
-    }
-    executors = {
-        'default': ThreadPoolExecutor(10),
-        'processpool': ProcessPoolExecutor(5)
-    }
-
-    job_defaults = {
-        'coalesce': False,
-        'max_instances': 4
-    }
-
-
+    tray_icon = SysTray()
+    tray_icon.show()
+    tray_icon.showMessage(u"启动通知", u"Kreminder 已经启动，点击系统托盘图标可以获取帮助.", 1, 15000)
 
     # scheduler of Reminding rest
     rest_config = get_conf("rest")
 
     if rest_config:
         try:
-            rest_notify_icon = getcwd() + "/icon/clock_32x32.png"
-            rest_remind_scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults)
-            # rest_remind_scheduler.add_job(show_notify, 'interval', \
-            #                                             minutes = rest_config["interval"], \
-            #                                             args = ["休息提醒", rest_config["message"], rest_notify_icon], \
-            #                                             id = "remind_rest")
-            rest_remind_scheduler.add_job(ti.showMessage, 'interval', minutes = rest_config["interval"], args = [u"休息提醒", rest_config["message"]], id = "remind_rest")
+            rest_remind_scheduler = BackgroundScheduler()
+            rest_remind_scheduler.add_job(tray_icon.showMessage, 'interval', \
+                                                                minutes = rest_config["interval"], \
+                                                                args = [u"休息提醒", rest_config["message"], 1, 15000], \
+                                                                id = "remind_rest")
             rest_remind_scheduler.start()
         except Exception, e:
             log(e, "error")
     else:
         log("未获取到 rest 的相关配置.", "error")
 
-
     # scheduler of Reminding todo
-
     todo_config = get_conf("todo")
 
     if todo_config:
-        todo_notify_icon = getcwd() + "/icon/clock_32x32.png"
         try:
-            todo_remind_scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults)
+            todo_remind_scheduler = BackgroundScheduler()
             for todo_date, todo_msg in todo_config.items():
                 if match("Everyday [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
                     todo_time = (todo_date.split()[1]).split(":")
-                    todo_remind_scheduler.add_job(show_notify, 'cron', \
+                    todo_remind_scheduler.add_job(tray_icon.showMessage, 'cron', \
                                                                 day = "*", \
                                                                 hour = todo_time[0], \
                                                                 minute = todo_time[1], \
                                                                 second = todo_time[2],  \
-                                                                args = ["待办事项", todo_msg, todo_notify_icon], \
+                                                                args = [u"待办事项", todo_msg, 1, 15000], \
                                                                 id = todo_date)
                 elif match("[\d]{4}-[\d]{2}-[\d]{2} [\d]{2}:[\d]{2}:[\d]{2}", todo_date.strip()):
-                    if todo_date > strftime("%Y-%m-%d %X", localtime()):
-                        todo_remind_scheduler.add_job(show_notify, "date", \
+                    if todo_date > strftime("%Y-%m-%d %H:%M:%S", localtime()):
+                        todo_remind_scheduler.add_job(tray_icon.showMessage, "date", \
                                                                     run_date = todo_date, \
-                                                                    args = ["待办事项", todo_msg, todo_notify_icon], \
+                                                                    args = [u"待办事项", todo_msg, 1, 15000], \
                                                                     id = todo_date)
                     else:
-                        log("设置的日期已经过期", "warn")
+                        log("设置的日期已经过期： " + todo_date , "warn")
                 else:
                     log("Todo 配置项的日期格式不正确： " + todo_date, "error")
             todo_remind_scheduler.start()
@@ -226,7 +164,6 @@ if __name__ == "__main__":
     # main process
     try:
         while True:
-            #sleep(2)
             sys.exit(app.exec_())
     except Exception, e:
         log(e, "error")
