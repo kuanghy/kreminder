@@ -16,7 +16,10 @@ from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from random import sample
+from PyQt4.QtGui import QApplication
+from trayIcon import TrayIcon
 import pynotify
+import sys
 import logging
 logging.basicConfig()
 
@@ -140,10 +143,15 @@ def startup_notice():
 
 if __name__ == "__main__":
     # show startup notify
-    startup_notice()
+    #startup_notice()
     # log("hello world")
     # import sys
     # sys.exit()
+    app = QApplication(sys.argv)
+    ti = TrayIcon()
+    ti.show()
+    ti.showMessage(u"启动通知",u"Kreminder 已经启动",)
+
 
 
     jobstores = {
@@ -169,10 +177,11 @@ if __name__ == "__main__":
         try:
             rest_notify_icon = getcwd() + "/icon/clock_32x32.png"
             rest_remind_scheduler = BackgroundScheduler(jobstores=jobstores, executors=executors, job_defaults=job_defaults)
-            rest_remind_scheduler.add_job(show_notify, 'interval', \
-                                                        minutes = rest_config["interval"], \
-                                                        args = ["休息提醒", rest_config["message"], rest_notify_icon], \
-                                                        id = "remind_rest")
+            # rest_remind_scheduler.add_job(show_notify, 'interval', \
+            #                                             minutes = rest_config["interval"], \
+            #                                             args = ["休息提醒", rest_config["message"], rest_notify_icon], \
+            #                                             id = "remind_rest")
+            rest_remind_scheduler.add_job(ti.showMessage, 'interval', minutes = rest_config["interval"], args = [u"休息提醒", rest_config["message"]], id = "remind_rest")
             rest_remind_scheduler.start()
         except Exception, e:
             log(e, "error")
@@ -217,7 +226,8 @@ if __name__ == "__main__":
     # main process
     try:
         while True:
-            sleep(2)
+            #sleep(2)
+            sys.exit(app.exec_())
     except Exception, e:
         log(e, "error")
         rest_remind_scheduler.shutdown()
