@@ -5,13 +5,26 @@ Kreminder
 
 ### 开发初衷
 
+对于需要长时间坐在电脑前工作的人来说，适当起来活动活动总是好的。如果长时间坐在电脑前不动，对于个人的健康来说，可能时一场噩梦。有人的可能想着要适当休息下，但一坐下来就忘了时间；有的人可能是明明已经感觉到坐着有些不舒服了，却没有毅力起来。我常常跟我的朋友说，我有“坐着”恐惧症，平时能站着，我绝对不会坐着。因为只要一工作，我就是坐一天，常常是忘了时间起来，即是闲下来时又没毅力起来了。中午一般是订外卖，坐着吃完就坐着眯一会，醒了又继续工作。想想也是太可怕了。
+
+(ˇˍˇ）
+
+所以，后来写了一个脚本，用 notify-send 输出气泡作提醒，并设置 crontab 隔一段时间就提醒自己休息一下。这就是该项目创建的初衷。
+
 ### 实现原理
+
+在最初用 notify-send + crontab 基本实现自己想要的功能之后，又发现这样灵活性太差，而且移植起来麻烦，换了台电脑又得重新配置。于是打算自己写一个定时任务，python 则是替代 shell 的好工具。刚开始是直接在 python 中调用 notify-send 命令。后来发现 python 有一个 pynotify 的模块能实现 notify-send 同样的功能，于是用 pynotify 改写。定时就不在用 crontab 了， 直接用个死循环 sleep 就搞定。至此，用 python 的替换就完成了，不在有麻烦的配置，我只要带着这份代码到处跑就可以了。
+
+过了一段时间，我发现我中午总是忘了订饭。于是我想，该给它添加一个功能，让它在快到中午的时候提醒我订饭。这个功能则区别于间隔提醒，它是需要在指定的一个时间来提醒你做某事。于是开始更加这个功能，这样就需要在循环中不停的对比时间，为之前的循环中有 sleep，所以就只能另外起一个线程。我打算用一个配置文件来设置所有需要处理的事物，然后让脚本一个一个的读取出来，这样我要增加一个事项的时候就不用直接改代码。
+
+写完之后运行程序，发现过了一会风扇就嗡嗡的转了起来。资源消耗太大了。这可能跟在循环中需要不断的获取当前时间来比较的原因。于是又寻求新的解决方案，最后发现了 Python 有一个定时任务框架 APScheduler （Advanced Python Scheduler）可以完全替代 crontab 的功能。于是由决定用 APScheduler 来改写程序。
+
+改写完成之后，在多次测试中发现 pynotify 似乎与 APScheduler 有些不太兼容，有些时候会出错。搞到最后，决定用 pyqt 来做算了。本来最开始也打算用 pyqt 写的，觉得要写界面，麻烦。Pyqt 的 QSystemTrayIcon 可以创建系统托盘，并且也能产生气泡。想想用 pyqt 写也好，以后可以在此基础上扩展更多的功能。
+
+至此，该项目才有了基本的雏形。
 
 ### 使用说明
 
-pip install apscheduler
+> pip install apscheduler
 
-http://debugo.com/apscheduler/
-http://www.cnblogs.com/leleroyn/p/4501359.html
-https://bitbucket.org/agronholm/apscheduler/src/master/examples/schedulers/background.py?fileviewer=file-view-default#background.py-25
-http://blog.csdn.net/wenph2008/article/details/43268999
+> ./install
