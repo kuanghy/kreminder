@@ -9,10 +9,9 @@
 # *************************************************************
 
 from os import getcwd, path, makedirs
-from time import sleep, strftime, localtime
+from time import strftime, localtime
 from re import match
 from apscheduler.schedulers.background import BackgroundScheduler
-from random import sample
 from PyQt4.QtGui import QApplication
 from systray import SysTray
 import sys
@@ -63,7 +62,7 @@ def parse_conf_file(file_object):
             if line.count("=") != 1:
                 continue
             else:
-                key, val = [ item.strip() for item in line.split("=") ]
+                key, val = [ item.strip(' "') for item in line.split("=") ]
                 if status == 1:
                     if not cmp(key, "interval"):
                         remind_rest_dict["interval"] = int(val)
@@ -74,7 +73,7 @@ def parse_conf_file(file_object):
                 elif status == 2:
                     todo_list_dict[key] = unicode(val, "utf-8")
                 else:
-                    log("在解析配置文件时出现未定义的状态： " + status, "error")
+                    log("在解析配置文件时出现未定义的状态： " + str(status), "error")
 
     return remind_rest_dict, todo_list_dict
 
@@ -163,8 +162,7 @@ if __name__ == "__main__":
 
     # main process
     try:
-        while True:
-            sys.exit(app.exec_())
+        sys.exit(app.exec_())
     except Exception, e:
         log(e, "error")
         rest_remind_scheduler.shutdown()

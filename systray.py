@@ -11,7 +11,7 @@
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-import sys
+import os, sys
 
 class SysTray(QSystemTrayIcon):
     def __init__(self, parent=None):
@@ -46,7 +46,7 @@ class SysTray(QSystemTrayIcon):
         sys.exit()
 
     def showHelp(self):
-        self.emit(SIGNAL("showHelp"))
+        os.system("xdg-open man/readme.html")
 
 if __name__ == "__main__":
     import sys

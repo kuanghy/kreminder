@@ -4,7 +4,7 @@
 # Author: huoty <sudohuoty@163.com>
 # Script starts from here:
 
-sleep 30s
+sleep 60s
 killall reminder.py
 cd $HOME/.kreminder
 nohup python kreminder.py
