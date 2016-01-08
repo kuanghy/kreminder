@@ -4,10 +4,12 @@
 # Author: huoty <sudohuoty@163.com>
 # Script starts from here:
 
+echo "Install..."
 rm -rf ~/.kreminder
 mkdir ~/.kreminder
 cp -a config icon man kreminder.py systray.py kreminder.sh ~/.kreminder
 
+echo "Creating desktop..."
 if [ ! -d "~/.config/autostart" ]
 then mkdir -p ~/.config/autostart
 fi
@@ -21,3 +23,6 @@ echo "Exec=sh $HOME/.kreminder/kreminder.sh" >> ~/.config/autostart/kreminder.de
 echo "Hidden=false" >> ~/.config/autostart/kreminder.desktop
 echo "NoDisplay=false" >> ~/.config/autostart/kreminder.desktop
 echo "X-GNOME-Autostart-enabled=true" >> ~/.config/autostart/kreminder.desktop
+
+echo "Completed!"
+exit 0
